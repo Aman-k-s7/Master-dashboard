@@ -9,7 +9,8 @@ SCAN_TABLE = os.getenv("WASTE_SCAN_TABLE", "scm_scans")
 COMPANY_ID = int(os.getenv("WASTE_COMPANY_ID", "312"))
 WEIGHT_MULTIPLIER = float(os.getenv("WASTE_WEIGHT_MULTIPLIER", "100"))
 ABNORMAL_MULTIPLIER = float(os.getenv("WASTE_ABNORMAL_MULTIPLIER", "1.2"))
-FIXED_DEVICE_SERIAL = os.getenv("WASTE_FIXED_DEVICE_SERIAL", "AGFW26009")
+# FIXED_DEVICE_SERIAL removed - now supports all devices
+FIXED_DEVICE_SERIAL = os.getenv("WASTE_FIXED_DEVICE_SERIAL", None)
 
 
 def _table() -> str:
@@ -70,7 +71,8 @@ def _where_clause(
     if filters.date_to:
         clauses.append("created_on_date <= %s")
         params.append(filters.date_to)
-    selected_devices = filters.devices or ((FIXED_DEVICE_SERIAL,) if FIXED_DEVICE_SERIAL else ())
+    # Allow filtering by selected devices, or show all devices if none selected
+    selected_devices = filters.devices
     if selected_devices:
         placeholders = ", ".join(["%s"] * len(selected_devices))
         clauses.append(f"device_serial_no IN ({placeholders})")
@@ -472,9 +474,7 @@ def get_top_devices(filters: FilterParams, limit: int = 5) -> list[dict]:
 def get_filter_options() -> dict:
     base_where = "WHERE company_id = %s AND created_on_date IS NOT NULL"
     base_params: list = [COMPANY_ID]
-    if FIXED_DEVICE_SERIAL:
-        base_where += " AND device_serial_no = %s"
-        base_params.append(FIXED_DEVICE_SERIAL)
+    # Removed FIXED_DEVICE_SERIAL filter to allow all devices
 
     devices_sql = f"""
         SELECT DISTINCT device_serial_no AS value
@@ -509,7 +509,8 @@ def get_filter_options() -> dict:
     meals = [row["value"] for row in _fetch_all(meals_sql, base_params)]
     categories = [row["value"] for row in _fetch_all(categories_sql, base_params)]
     date_range = _fetch_one(range_sql, base_params)
-    weeks = get_weekly_waste(FilterParams(devices=((FIXED_DEVICE_SERIAL,) if FIXED_DEVICE_SERIAL else ())))
+    # Get weeks for all devices instead of just FIXED_DEVICE_SERIAL
+    weeks = get_weekly_waste(FilterParams())
 
     return {
         "devices": devices,

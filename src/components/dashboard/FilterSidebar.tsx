@@ -115,8 +115,6 @@ function MultiSelectDropdown({
 }
 
 
-const FIXED_DEVICE_SERIAL = "AGFW26009";
-
 interface FilterSidebarProps {
   options?: FilterOptions;
   onApply: (filters: DashboardFilters) => void;
@@ -126,6 +124,7 @@ interface FilterSidebarProps {
 export default function FilterSidebar({ options, onApply }: FilterSidebarProps) {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [devices, setDevices] = useState<string[]>([]);
   const [meals, setMeals] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [weeks, setWeeks] = useState<string[]>([]);
@@ -134,11 +133,14 @@ export default function FilterSidebar({ options, onApply }: FilterSidebarProps) 
     if (!options) return;
     setDateFrom(undefined);
     setDateTo(undefined);
+    // Initialize with all available devices
+    setDevices(options.devices || []);
     setMeals([]);
     setCategories([]);
     setWeeks([]);
   }, [options]);
 
+  const deviceOptions = useMemo<DropdownOption[]>(() => (options?.devices ?? []).map((item) => ({ label: item, value: item })), [options?.devices]);
   const mealOptions = useMemo<DropdownOption[]>(() => (options?.meal_types ?? []).map((item) => ({ label: item, value: item })), [options?.meal_types]);
   const categoryOptions = useMemo<DropdownOption[]>(() => (options?.categories ?? []).map((item) => ({ label: item, value: item })), [options?.categories]);
   const weekOptions = useMemo<DropdownOption[]>(() => (options?.weeks ?? []).map((item) => ({ label: item.label, value: item.value })), [options?.weeks]);
@@ -159,7 +161,7 @@ export default function FilterSidebar({ options, onApply }: FilterSidebarProps) 
     onApply({
       dateFrom: finalDateFrom,
       dateTo: finalDateTo,
-      devices: [FIXED_DEVICE_SERIAL],
+      devices: devices.length ? devices : (options?.devices || []),
       mealTypes: meals,
       categories,
       weeks,
@@ -169,11 +171,12 @@ export default function FilterSidebar({ options, onApply }: FilterSidebarProps) 
   const reset = () => {
     setDateFrom(undefined);
     setDateTo(undefined);
+    setDevices(options?.devices || []);
     setMeals([]);
     setCategories([]);
     setWeeks([]);
     onApply({
-      devices: [FIXED_DEVICE_SERIAL],
+      devices: options?.devices || [],
       mealTypes: [],
       categories: [],
       weeks: [],
@@ -216,6 +219,18 @@ export default function FilterSidebar({ options, onApply }: FilterSidebarProps) 
               </PopoverContent>
             </Popover>
           </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Devices</label>
+          <MultiSelectDropdown
+            label="Devices"
+            placeholder="All devices"
+            options={deviceOptions}
+            selected={devices}
+            onChange={setDevices}
+            searchPlaceholder="Search devices..."
+          />
         </div>
 
         <div>

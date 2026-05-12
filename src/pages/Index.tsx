@@ -16,9 +16,9 @@ import type { DashboardFilters } from "@/lib/dashboard";
 
 export default function Index() {
   const { data: filterOptions } = useDashboardFilterOptions();
-  const dashboardDevices = ["AGFW26009"];
+  // Removed hardcoded device - now uses all available devices from filter options
   const [appliedFilters, setAppliedFilters] = useState<DashboardFilters>({
-    devices: dashboardDevices,
+    devices: [],
     mealTypes: [],
     categories: [],
     weeks: [],
@@ -26,8 +26,9 @@ export default function Index() {
 
   useEffect(() => {
     if (!filterOptions) return;
+    // Initialize with all available devices from the backend
     setAppliedFilters({
-      devices: dashboardDevices,
+      devices: filterOptions.devices || [],
       mealTypes: [],
       categories: [],
       weeks: [],
