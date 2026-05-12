@@ -124,28 +124,18 @@ def _format_week_label(start_date, end_date) -> str:
 
 def get_dashboard_summary(filters: FilterParams) -> dict:
     waste_where_sql, waste_params = _where_clause(filters)
-    count_where_sql, count_params = _where_clause(
-        filters,
-        require_commodity=False,
-        require_created_on_date=False,
-    )
+    # Use the same filters for scans count to match waste calculations
     summary_sql = f"""
         SELECT
             ROUND(COALESCE(SUM({_weight_expr()}), 0), 3) AS total_waste,
-            ROUND(COALESCE(SUM({_weight_expr()}), 0) * 39.5, 3) AS co2_impact
+            ROUND(COALESCE(SUM({_weight_expr()}), 0) * 39.5, 3) AS co2_impact,
+            COUNT(*) AS total_scans,
+            COUNT(DISTINCT CASE WHEN device_serial_no IS NOT NULL AND device_serial_no <> '' THEN device_serial_no END) AS total_devices
         FROM {_table()}
         {waste_where_sql}
     """
     summary = _fetch_one(summary_sql, waste_params)
-
-    count_sql = f"""
-        SELECT
-            COUNT(*) AS total_scans,
-            COUNT(DISTINCT CASE WHEN device_serial_no IS NOT NULL AND device_serial_no <> '' THEN device_serial_no END) AS total_devices
-        FROM {_table()}
-        {count_where_sql}
-    """
-    counts = _fetch_one(count_sql, count_params)
+    counts = summary  # Use the same result set
 
     abnormal_sql = f"""
         SELECT COUNT(*) AS abnormal_days
