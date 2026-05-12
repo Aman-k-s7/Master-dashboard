@@ -52,17 +52,8 @@ def _amount_expr() -> str:
     return f"COALESCE(CAST({request_amount} AS DECIMAL(18, 3)), COALESCE(amount, 0))"
 
 
-def _where_clause(
-    filters: FilterParams,
-    *,
-    require_commodity: bool = True,
-    require_created_on_date: bool = True,
-) -> tuple[str, list]:
-    clauses = ["company_id = %s"]
-    if require_commodity:
-        clauses.append("commodity_name IS NOT NULL")
-    if require_created_on_date:
-        clauses.append("created_on_date IS NOT NULL")
+def _where_clause(filters: FilterParams) -> tuple[str, list]:
+    clauses = ["company_id = %s", "commodity_name IS NOT NULL", "created_on_date IS NOT NULL"]
     params: list = [COMPANY_ID]
 
     if filters.date_from:
@@ -71,12 +62,10 @@ def _where_clause(
     if filters.date_to:
         clauses.append("created_on_date <= %s")
         params.append(filters.date_to)
-    # Allow filtering by selected devices, or show all devices if none selected
-    selected_devices = filters.devices
-    if selected_devices:
-        placeholders = ", ".join(["%s"] * len(selected_devices))
+    if filters.devices:
+        placeholders = ", ".join(["%s"] * len(filters.devices))
         clauses.append(f"device_serial_no IN ({placeholders})")
-        params.extend(selected_devices)
+        params.extend(filters.devices)
     if filters.meal_types:
         placeholders = ", ".join(["%s"] * len(filters.meal_types))
         clauses.append(f"{_meal_expr()} IN ({placeholders})")
@@ -123,28 +112,24 @@ def _format_week_label(start_date, end_date) -> str:
 
 
 def get_dashboard_summary(filters: FilterParams) -> dict:
-    waste_where_sql, waste_params = _where_clause(filters)
-    
-    # Consolidate into single query - count only valid waste records
-    # (requires both commodity_name and created_on_date to match waste calculations)
+    where_sql, params = _where_clause(filters)
     summary_sql = f"""
         SELECT
             ROUND(COALESCE(SUM({_weight_expr()}), 0), 3) AS total_waste,
-            ROUND(COALESCE(SUM({_weight_expr()}), 0) * 39.5, 3) AS co2_impact,
             COUNT(*) AS total_scans,
-            COUNT(DISTINCT CASE WHEN device_serial_no IS NOT NULL AND device_serial_no <> '' THEN device_serial_no END) AS total_devices
+            COUNT(DISTINCT device_serial_no) AS total_devices,
+            ROUND(COALESCE(SUM({_weight_expr()}), 0) * 39.5, 3) AS co2_impact
         FROM {_table()}
-        {waste_where_sql}
+        {where_sql}
     """
-    summary = _fetch_one(summary_sql, waste_params)
-    counts = summary
+    summary = _fetch_one(summary_sql, params)
 
     abnormal_sql = f"""
         SELECT COUNT(*) AS abnormal_days
         FROM (
             SELECT created_on_date, SUM({_weight_expr()}) AS daily_waste
             FROM {_table()}
-            {waste_where_sql}
+            {where_sql}
             GROUP BY created_on_date
         ) AS daily_totals
         WHERE daily_waste > (
@@ -152,12 +137,12 @@ def get_dashboard_summary(filters: FilterParams) -> dict:
             FROM (
                 SELECT created_on_date, SUM({_weight_expr()}) AS daily_waste
                 FROM {_table()}
-                {waste_where_sql}
+                {where_sql}
                 GROUP BY created_on_date
             ) AS averages
         )
     """
-    abnormal = _fetch_one(abnormal_sql, [*waste_params, ABNORMAL_MULTIPLIER, *waste_params])
+    abnormal = _fetch_one(abnormal_sql, [*params, ABNORMAL_MULTIPLIER, *params])
 
     most_wasted_food = get_waste_by_food_item(filters, limit=1)
     peak_waste_meal = get_waste_by_meal(filters, limit=1)
@@ -166,19 +151,19 @@ def get_dashboard_summary(filters: FilterParams) -> dict:
         FROM (
             SELECT created_on_date, SUM({_weight_expr()}) AS daily_waste
             FROM {_table()}
-            {waste_where_sql}
+            {where_sql}
             GROUP BY created_on_date
             HAVING SUM({_weight_expr()}) > 0
         ) AS active_days
     """
-    active_days_row = _fetch_one(active_days_sql, waste_params)
+    active_days_row = _fetch_one(active_days_sql, params)
     total_waste = float(summary.get("total_waste") or 0)
     active_days = int(active_days_row.get("active_days") or 0)
 
     return {
         "total_waste": total_waste,
-        "total_scans": int(counts.get("total_scans") or 0),
-        "total_devices": int(counts.get("total_devices") or 0),
+        "total_scans": int(summary.get("total_scans") or 0),
+        "total_devices": int(summary.get("total_devices") or 0),
         "average_daily_waste": round(total_waste / active_days, 3) if active_days else 0,
         "abnormal_days": int(abnormal.get("abnormal_days") or 0),
         "cost_loss": 0.0,
