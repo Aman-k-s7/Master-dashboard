@@ -125,31 +125,19 @@ def _format_week_label(start_date, end_date) -> str:
 def get_dashboard_summary(filters: FilterParams) -> dict:
     waste_where_sql, waste_params = _where_clause(filters)
     
-    # For total_scans: count ALL scans (even without commodity), but still apply date/device filters
-    scan_where_sql, scan_params = _where_clause(
-        filters,
-        require_commodity=False,  # Don't require commodity for scan count
-        require_created_on_date=True,  # Keep date filter for consistency
-    )
-    
+    # Consolidate into single query - count only valid waste records
+    # (requires both commodity_name and created_on_date to match waste calculations)
     summary_sql = f"""
         SELECT
             ROUND(COALESCE(SUM({_weight_expr()}), 0), 3) AS total_waste,
-            ROUND(COALESCE(SUM({_weight_expr()}), 0) * 39.5, 3) AS co2_impact
+            ROUND(COALESCE(SUM({_weight_expr()}), 0) * 39.5, 3) AS co2_impact,
+            COUNT(*) AS total_scans,
+            COUNT(DISTINCT CASE WHEN device_serial_no IS NOT NULL AND device_serial_no <> '' THEN device_serial_no END) AS total_devices
         FROM {_table()}
         {waste_where_sql}
     """
     summary = _fetch_one(summary_sql, waste_params)
-    
-    # Count ALL scans that match the filters (including those without commodity_name)
-    scan_sql = f"""
-        SELECT
-            COUNT(*) AS total_scans,
-            COUNT(DISTINCT CASE WHEN device_serial_no IS NOT NULL AND device_serial_no <> '' THEN device_serial_no END) AS total_devices
-        FROM {_table()}
-        {scan_where_sql}
-    """
-    counts = _fetch_one(scan_sql, scan_params)
+    counts = summary
 
     abnormal_sql = f"""
         SELECT COUNT(*) AS abnormal_days
