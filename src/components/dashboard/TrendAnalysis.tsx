@@ -16,13 +16,30 @@ export default function TrendAnalysis({ trend }: TrendAnalysisProps) {
   }));
   const spikes = chartData.filter((point) => point.spike);
 
+  // Auto-adjust interval based on data length to prevent label overlap
+  const getInterval = () => {
+    const dataLength = chartData.length;
+    if (dataLength <= 30) return 0; // Show all for <= 30 days
+    if (dataLength <= 90) return Math.floor(dataLength / 15); // ~15 labels
+    if (dataLength <= 180) return Math.floor(dataLength / 12); // ~12 labels
+    return Math.floor(dataLength / 10); // ~10 labels for larger datasets
+  };
+
   return (
     <div className="chart-card">
       <h3 className="section-title">Daily Waste Trend</h3>
       <ResponsiveContainer width="100%" height={320}>
         <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 20, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,13%,90%)" />
-          <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={1} angle={-30} textAnchor="end" height={60} />
+          <XAxis 
+            dataKey="label" 
+            tick={{ fontSize: 11 }} 
+            interval={getInterval()} 
+            angle={-45} 
+            textAnchor="end" 
+            height={70}
+            minTickGap={5}
+          />
           <YAxis tick={{ fontSize: 11 }} />
           <Tooltip contentStyle={{ fontSize: 12, borderRadius: 4 }} />
           <Line type="monotone" dataKey="value" stroke="hsl(155,43%,21%)" strokeWidth={2} dot={false} />
