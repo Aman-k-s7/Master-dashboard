@@ -53,7 +53,7 @@ def _amount_expr() -> str:
 
 
 def _where_clause(filters: FilterParams) -> tuple[str, list]:
-    clauses = ["company_id = %s", "commodity_name IS NOT NULL", "created_on_date IS NOT NULL"]
+    clauses = ["company_id = %s", "commodity_name IS NOT NULL", "created_on_date IS NOT NULL", "is_valid = 1"]
     params: list = [COMPANY_ID]
 
     if filters.date_from:
@@ -449,7 +449,7 @@ def get_top_devices(filters: FilterParams, limit: int = 5) -> list[dict]:
 
 
 def get_filter_options() -> dict:
-    base_where = "WHERE company_id = %s AND created_on_date IS NOT NULL"
+    base_where = "WHERE company_id = %s AND created_on_date IS NOT NULL AND is_valid = 1"
     base_params: list = [COMPANY_ID]
     # Removed FIXED_DEVICE_SERIAL filter to allow all devices
 
