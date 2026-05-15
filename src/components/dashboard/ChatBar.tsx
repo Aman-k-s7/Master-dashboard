@@ -62,7 +62,6 @@ export default function ChatBar({ filters }: ChatBarProps) {
       <div className="flex items-center gap-2 mb-1">
         <Sparkles className="h-4 w-4 text-primary" />
         <span className="text-sm font-semibold text-foreground">Ask the Dashboard</span>
-        <span className="text-xs text-muted-foreground ml-1">powered by Gemini</span>
       </div>
 
       {/* Free-text input */}
