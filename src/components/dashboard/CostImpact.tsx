@@ -1,4 +1,4 @@
-import { Clock3, IndianRupee, Utensils, Weight } from "lucide-react";
+import { Clock3, Wind, Utensils, Weight } from "lucide-react";
 
 import type { DashboardSummary } from "@/lib/dashboard";
 
@@ -10,7 +10,7 @@ interface CostImpactProps {
 
 export default function CostImpact({ summary }: CostImpactProps) {
   const items = [
-    { label: "Total Cost", value: `Rs ${(summary?.co2_impact ?? 0).toLocaleString()}`, icon: IndianRupee, color: "text-primary" },
+    { label: "Total CO\u2082e (kg)", value: `${(summary?.co2_impact ?? 0).toLocaleString()} kgs`, icon: Wind, color: "text-primary" },
     { label: "Most Wasted Food", value: summary?.most_wasted_food?.name ?? "-", icon: Utensils, color: "text-accent" },
     { label: "Peak Waste Meal", value: summary?.peak_waste_meal?.name ?? "-", icon: Clock3, color: "text-primary" },
     { label: "Top Food Weight", value: `${(summary?.most_wasted_food?.value ?? 0).toLocaleString()} kg`, icon: Weight, color: "text-destructive" },

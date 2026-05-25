@@ -1,4 +1,4 @@
-import { AlertTriangle, Cpu, IndianRupee, Leaf, Scale, ScanLine } from "lucide-react";
+import { AlertTriangle, Cpu, Wind, Leaf, Scale, ScanLine } from "lucide-react";
 
 import type { DashboardSummary } from "@/lib/dashboard";
 
@@ -15,7 +15,7 @@ export default function KpiStrip({ summary }: KpiStripProps) {
     { label: "Average Daily Waste", value: `${(summary?.average_daily_waste ?? 0).toLocaleString()} kg`, icon: Leaf, color: "text-primary" },
     { label: "Total Devices", value: (summary?.total_devices ?? 0).toString(), icon: Cpu, color: "text-primary" },
     { label: "Abnormal Days", value: (summary?.abnormal_days ?? 0).toString(), icon: AlertTriangle, color: "text-destructive" },
-    { label: "Total Cost", value: `Rs ${(summary?.co2_impact ?? 0).toLocaleString()}`, icon: IndianRupee, color: "text-accent" },
+    { label: "Total CO\u2082e (kg)", value: `${(summary?.co2_impact ?? 0).toLocaleString()} kgs`, icon: Wind, color: "text-accent" },
   ];
 
   return (
