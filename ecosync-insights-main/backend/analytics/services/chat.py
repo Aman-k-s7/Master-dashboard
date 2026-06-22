@@ -170,7 +170,7 @@ def _local_answer(question: str, context: dict[str, Any]) -> str:
     if "anomaly" in lowered:
         return f"There are {summary['abnormal_days']} anomaly days in the current filtered range."
     if "co2" in lowered or "carbon" in lowered:
-        return f"Total CO2 wasted is {summary['co2_impact']:.2f} kg (total waste multiplied by 39.5)."
+        return f"Total CO\u2082e is {summary['co2_impact']:.2f} kg (1.75 kg CO\u2082e per kg of food waste)."
     if "insight" in lowered and insights["key_insights"]:
         return insights["key_insights"][0]
 

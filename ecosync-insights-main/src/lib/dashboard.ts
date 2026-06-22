@@ -4,6 +4,7 @@ export interface DashboardFilters {
   devices: string[];
   mealTypes: string[];
   categories: string[];
+  wasteTypes: string[];
   weeks: string[];
 }
 
@@ -54,6 +55,7 @@ export interface FilterOptions {
   devices: string[];
   meal_types: string[];
   categories: string[];
+  waste_types: string[];
   weeks: FilterWeek[];
   min_date: string | null;
   max_date: string | null;
@@ -75,6 +77,45 @@ export interface WeekdayComparisonGrid {
 }
 
 
+export interface UsageAnalytics {
+  total_scans: number;
+  active_days: number;
+  scans_per_day: number;
+  total_devices: number;
+  scans_by_meal: Array<{ name: string; value: number }>;
+  scans_by_waste_type: Array<{ name: string; value: number }>;
+}
+
+
+export interface BainMarieAnalytics {
+  kpi: { total_waste: number; daily_average: number; active_days: number };
+  top_food_items: Array<{ name: string; value: number }>;
+  by_meal: Array<{ name: string; value: number }>;
+  daily_trend: Array<{ date: string; value: number }>;
+}
+
+
+export const DEVICE_DISPLAY_NAMES: Record<string, string> = {
+  "CFS01": "CPU (Gurgaon)",
+  "AGFW26008": "CPU (Hyderabad)",
+  "AGFW26016": "Flames University (Pune)",
+  "CFS02": "Cafe Ananda (Gurgaon)",
+  "AGFW26006": "CPU 3 BLR WHITEFIELD (Bangalore)",
+  "AGFW26010": "Morgan Stanley (Mumbai)",
+  "AGFW26011": "GE India (Pune)",
+  "CFSO13": "Morgan Stanley (Mumbai)",
+  "AGFW26009": "APOLLO INDIA SERVICES (Mumbai)",
+  "CMP-TST-01": "Testing Cafe (Mohali)",
+  "CFSO5": "SAP11BLR (Bengaluru)",
+  "AGFW26005": "BNY (Trial) (Pune)",
+  "AGFW26014": "Boeing India WH1 (Kempapura)",
+};
+
+export function getDeviceDisplayName(serial: string): string {
+  return DEVICE_DISPLAY_NAMES[serial] ?? serial;
+}
+
+
 function buildParams(filters: DashboardFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.dateFrom) params.set("date_from", filters.dateFrom);
@@ -83,6 +124,7 @@ function buildParams(filters: DashboardFilters): URLSearchParams {
   if (filters.devices.length) params.set("devices", filters.devices.join(","));
   if (filters.mealTypes.length) params.set("meal_types", filters.mealTypes.join(","));
   if (filters.categories.length) params.set("categories", filters.categories.join(","));
+  if (filters.wasteTypes.length) params.set("waste_types", filters.wasteTypes.join(","));
   return params;
 }
 
@@ -111,6 +153,9 @@ export const dashboardApi = {
   getTopDevices: (filters: DashboardFilters) => fetchJson<NamedValue[]>("top-devices", filters),
   getInsights: (filters: DashboardFilters) => fetchJson<DashboardInsights>("dashboard-insights", filters),
   getFilterOptions: () => fetchJson<FilterOptions>("filter-options"),
+  getUsageAnalytics: (filters: DashboardFilters) => fetchJson<UsageAnalytics>("usage-analytics", filters),
+  getBainMarieAnalytics: (filters: DashboardFilters) => fetchJson<BainMarieAnalytics>("bain-marie-analytics", filters),
+  getDailyAvgByCategory: (filters: DashboardFilters) => fetchJson<NamedValue[]>("daily-avg-by-category", filters),
   getMealBreakdown: async (filters: DashboardFilters, wasteTypes: string[]) => {
     const params = buildParams(filters);
     if (wasteTypes.length) params.set("waste_types", wasteTypes.join(","));

@@ -9,6 +9,8 @@ from django.views.decorators.http import require_GET, require_http_methods
 from analytics.services.chat import answer_dashboard_question
 from analytics.services.dashboard import (
     get_anomaly_days,
+    get_bain_marie_analytics,
+    get_daily_avg_by_category,
     get_daily_waste_trend,
     get_dashboard_summary,
     get_dashboard_insights,
@@ -16,6 +18,7 @@ from analytics.services.dashboard import (
     get_moisture_data,
     get_reason_breakdown,
     get_top_devices,
+    get_usage_analytics,
     get_waste_by_food_item,
     get_waste_by_meal,
     get_waste_by_weekday,
@@ -245,6 +248,39 @@ def moisture_data(request: HttpRequest) -> JsonResponse:
     limit = request.GET.get("limit")
     try:
         payload = get_moisture_data(filters, limit=int(limit) if limit and limit.isdigit() else 250)
+    except DatabaseError as exc:
+        return _database_error_response(exc)
+    return JsonResponse(payload, safe=False)
+
+
+@require_GET
+def usage_analytics(request: HttpRequest) -> JsonResponse:
+    try:
+        payload = get_usage_analytics(_parse_request_filters(request))
+    except ValidationError as exc:
+        return _invalid_filters_response(exc)
+    except DatabaseError as exc:
+        return _database_error_response(exc)
+    return JsonResponse(payload)
+
+
+@require_GET
+def bain_marie_analytics(request: HttpRequest) -> JsonResponse:
+    try:
+        payload = get_bain_marie_analytics(_parse_request_filters(request))
+    except ValidationError as exc:
+        return _invalid_filters_response(exc)
+    except DatabaseError as exc:
+        return _database_error_response(exc)
+    return JsonResponse(payload)
+
+
+@require_GET
+def daily_avg_by_category(request: HttpRequest) -> JsonResponse:
+    try:
+        payload = get_daily_avg_by_category(_parse_request_filters(request))
+    except ValidationError as exc:
+        return _invalid_filters_response(exc)
     except DatabaseError as exc:
         return _database_error_response(exc)
     return JsonResponse(payload, safe=False)
