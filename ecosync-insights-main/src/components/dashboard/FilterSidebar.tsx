@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { DashboardFilters, FilterOptions } from "@/lib/dashboard";
+import { getDeviceDisplayName } from "@/lib/dashboard";
 
 
 interface DropdownOption {
@@ -141,7 +142,7 @@ export default function FilterSidebar({ options, onApply }: FilterSidebarProps) 
     setWeeks([]);
   }, [options]);
 
-  const deviceOptions = useMemo<DropdownOption[]>(() => (options?.devices ?? []).map((item) => ({ label: item, value: item })), [options?.devices]);
+  const deviceOptions = useMemo<DropdownOption[]>(() => (options?.devices ?? []).map((item) => ({ label: getDeviceDisplayName(item), value: item })), [options?.devices]);
   const mealOptions = useMemo<DropdownOption[]>(() => (options?.meal_types ?? []).map((item) => ({ label: item, value: item })), [options?.meal_types]);
   const categoryOptions = useMemo<DropdownOption[]>(() => (options?.categories ?? []).map((item) => ({ label: item, value: item })), [options?.categories]);
   const wasteTypeOptions = useMemo<DropdownOption[]>(() => (options?.waste_types ?? []).map((item) => ({ label: item, value: item })), [options?.waste_types]);
