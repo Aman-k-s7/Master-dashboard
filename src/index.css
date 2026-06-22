@@ -82,3 +82,16 @@
     @apply bg-destructive/10 text-destructive;
   }
 }
+
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body {
+    background: white !important;
+  }
+}

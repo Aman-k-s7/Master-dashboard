@@ -41,7 +41,7 @@ DATA SCHEMA (so you understand the context fields):
 - summary.total_devices: number of active weighing devices
 - summary.average_daily_waste: kg per active day
 - summary.abnormal_days: days where waste exceeded 1.2× the daily average
-- summary.co2_impact: estimated cost impact in INR (total_waste × 39.5)
+- summary.co2_impact: estimated CO₂e impact in kg (total_waste × 1.75 kg CO₂e/kg food waste)
 - summary.most_wasted_food: {name, value} — top food item by kg
 - summary.peak_waste_meal: {name, value} — meal type with highest waste
 - food_items: list of {name, value} — all food items ranked by kg
@@ -155,8 +155,8 @@ def _local_fallback(question: str, context: dict[str, Any]) -> str:
         return f"Top device: {devices[0]['name']} — {devices[0]['value']:.2f} kg." if devices else "No device data available."
     if "anomaly" in lowered or "spike" in lowered:
         return f"Abnormal days detected: {summary.get('abnormal_days', 0)}."
-    if "cost" in lowered or "rupee" in lowered or "inr" in lowered:
-        return f"Estimated cost impact: Rs {summary.get('co2_impact', 0):.2f}."
+    if "cost" in lowered or "rupee" in lowered or "inr" in lowered or "co2" in lowered or "carbon" in lowered:
+        return f"Total CO\u2082e is {summary.get('co2_impact', 0):.2f} kg (1.75 kg CO\u2082e per kg of food waste)."
 
     return (
         f"Dashboard snapshot — "

@@ -127,6 +127,7 @@ export default function FilterSidebar({ options, onApply }: FilterSidebarProps) 
   const [devices, setDevices] = useState<string[]>([]);
   const [meals, setMeals] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [wasteTypes, setWasteTypes] = useState<string[]>([]);
   const [weeks, setWeeks] = useState<string[]>([]);
 
   useEffect(() => {
@@ -137,12 +138,14 @@ export default function FilterSidebar({ options, onApply }: FilterSidebarProps) 
     setDevices(options.devices || []);
     setMeals([]);
     setCategories([]);
+    setWasteTypes(options.waste_types ?? []);
     setWeeks([]);
   }, [options]);
 
   const deviceOptions = useMemo<DropdownOption[]>(() => (options?.devices ?? []).map((item) => ({ label: item, value: item })), [options?.devices]);
   const mealOptions = useMemo<DropdownOption[]>(() => (options?.meal_types ?? []).map((item) => ({ label: item, value: item })), [options?.meal_types]);
   const categoryOptions = useMemo<DropdownOption[]>(() => (options?.categories ?? []).map((item) => ({ label: item, value: item })), [options?.categories]);
+  const wasteTypeOptions = useMemo<DropdownOption[]>(() => (options?.waste_types ?? []).map((item) => ({ label: item, value: item })), [options?.waste_types]);
   const weekOptions = useMemo<DropdownOption[]>(() => (options?.weeks ?? []).map((item) => ({ label: item.label, value: item.value })), [options?.weeks]);
 
   const apply = () => {
@@ -164,6 +167,7 @@ export default function FilterSidebar({ options, onApply }: FilterSidebarProps) 
       devices: devices.length ? devices : (options?.devices || []),
       mealTypes: meals,
       categories,
+      wasteTypes,
       weeks,
     });
   };
@@ -174,11 +178,13 @@ export default function FilterSidebar({ options, onApply }: FilterSidebarProps) 
     setDevices(options?.devices || []);
     setMeals([]);
     setCategories([]);
+    setWasteTypes(options?.waste_types ?? []);
     setWeeks([]);
     onApply({
       devices: options?.devices || [],
       mealTypes: [],
       categories: [],
+      wasteTypes: options?.waste_types ?? [],
       weeks: [],
     });
   };
@@ -254,6 +260,18 @@ export default function FilterSidebar({ options, onApply }: FilterSidebarProps) 
             selected={categories}
             onChange={setCategories}
             searchPlaceholder="Search categories..."
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Waste Type</label>
+          <MultiSelectDropdown
+            label="Waste types"
+            placeholder="All waste types"
+            options={wasteTypeOptions}
+            selected={wasteTypes}
+            onChange={setWasteTypes}
+            searchPlaceholder="Search waste types..."
           />
         </div>
 

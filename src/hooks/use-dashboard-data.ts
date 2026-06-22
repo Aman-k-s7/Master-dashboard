@@ -1,6 +1,6 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 
-import { dashboardApi, type DashboardFilters } from "@/lib/dashboard";
+import { dashboardApi, type BainMarieAnalytics, type DashboardFilters, type UsageAnalytics } from "@/lib/dashboard";
 
 
 export function useDashboardFilterOptions() {
@@ -24,10 +24,13 @@ export function useDashboardData(filters: DashboardFilters) {
       { queryKey: ["dashboard-weekday", filters], queryFn: () => dashboardApi.getWeekdayWaste(filters) },
       { queryKey: ["dashboard-top-devices", filters], queryFn: () => dashboardApi.getTopDevices(filters) },
       { queryKey: ["dashboard-insights", filters], queryFn: () => dashboardApi.getInsights(filters) },
+      { queryKey: ["dashboard-usage-analytics", filters], queryFn: () => dashboardApi.getUsageAnalytics(filters) },
+      { queryKey: ["dashboard-bain-marie", filters], queryFn: () => dashboardApi.getBainMarieAnalytics(filters) },
+      { queryKey: ["dashboard-daily-avg-category", filters], queryFn: () => dashboardApi.getDailyAvgByCategory(filters) },
     ],
   });
 
-  const [summary, foodItems, wasteCategories, meals, trend, anomalies, weeklyWaste, weekdayWaste, topDevices, insights] = results;
+  const [summary, foodItems, wasteCategories, meals, trend, anomalies, weeklyWaste, weekdayWaste, topDevices, insights, usageAnalytics, bainMarieAnalytics, dailyAvgByCategory] = results;
   return {
     summary: summary.data,
     foodItems: foodItems.data ?? [],
@@ -39,6 +42,9 @@ export function useDashboardData(filters: DashboardFilters) {
     weekdayWaste: weekdayWaste.data ?? [],
     topDevices: topDevices.data ?? [],
     insights: insights.data,
+    usageAnalytics: usageAnalytics.data as UsageAnalytics | undefined,
+    bainMarieAnalytics: bainMarieAnalytics.data as BainMarieAnalytics | undefined,
+    dailyAvgByCategory: dailyAvgByCategory.data ?? [],
     isLoading: results.some((result) => result.isLoading),
     isError: results.some((result) => result.isError),
     error: (results.find((result) => result.error)?.error as Error | undefined) ?? undefined,
