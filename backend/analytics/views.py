@@ -284,3 +284,56 @@ def daily_avg_by_category(request: HttpRequest) -> JsonResponse:
     except DatabaseError as exc:
         return _database_error_response(exc)
     return JsonResponse(payload, safe=False)
+
+
+@require_GET
+def debug_scan_count(request: HttpRequest) -> JsonResponse:
+    """Temporary diagnostic endpoint — remove after investigation."""
+    from django.db import connection as _conn
+    import os as _os
+    table = _os.getenv("WASTE_SCAN_TABLE", "scm_scans")
+    company = int(_os.getenv("WASTE_COMPANY_ID", "312"))
+    device = request.GET.get("device", "CFS02")
+    date_param = request.GET.get("date", "2026-05-05")
+    results = {}
+    with _conn.cursor() as c:
+        # Count with current filters for this device
+        try:
+            c.execute(
+                f"SELECT COUNT(*) FROM `{table}` WHERE company_id=%s AND is_valid=1"
+                f" AND commodity_name IS NOT NULL AND created_on_date IS NOT NULL"
+                f" AND device_serial_no=%s",
+                [company, device]
+            )
+            results["total_count_is_valid_1"] = c.fetchone()[0]
+        except Exception as e:
+            results["total_count_is_valid_1"] = f"ERROR: {e}"
+
+        # Count WITHOUT is_valid filter
+        try:
+            c.execute(
+                f"SELECT COUNT(*) FROM `{table}` WHERE company_id=%s"
+                f" AND commodity_name IS NOT NULL AND created_on_date IS NOT NULL"
+                f" AND device_serial_no=%s",
+                [company, device]
+            )
+            results["total_count_no_is_valid"] = c.fetchone()[0]
+        except Exception as e:
+            results["total_count_no_is_valid"] = f"ERROR: {e}"
+
+        # All rows on the suspect date
+        try:
+            c.execute(
+                f"SELECT id, device_serial_no, is_valid, commodity_name, weight, created_on_date,"
+                f" CASE WHEN JSON_VALID(request) THEN JSON_UNQUOTE(JSON_EXTRACT(request, '$.scan_data.weight')) ELSE NULL END AS req_weight,"
+                f" CASE WHEN JSON_VALID(request) THEN JSON_UNQUOTE(JSON_EXTRACT(request, '$.scan_data.day_part')) ELSE NULL END AS day_part,"
+                f" CASE WHEN JSON_VALID(request) THEN JSON_UNQUOTE(JSON_EXTRACT(request, '$.scan_data.food_waste_type')) ELSE NULL END AS waste_type"
+                f" FROM `{table}` WHERE company_id=%s AND device_serial_no=%s AND created_on_date=%s ORDER BY id",
+                [company, device, date_param]
+            )
+            cols = [d[0] for d in c.description]
+            results["rows_on_date"] = [{cols[i]: (str(v) if v is not None else None) for i, v in enumerate(row)} for row in c.fetchall()]
+        except Exception as e:
+            results["rows_on_date"] = f"ERROR: {e}"
+
+    return JsonResponse(results)

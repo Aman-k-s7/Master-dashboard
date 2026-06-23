@@ -22,4 +22,5 @@ urlpatterns = [
     path("usage-analytics", views.usage_analytics, name="usage-analytics"),
     path("bain-marie-analytics", views.bain_marie_analytics, name="bain-marie-analytics"),
     path("daily-avg-by-category", views.daily_avg_by_category, name="daily-avg-by-category"),
+    path("debug-scan-count", views.debug_scan_count, name="debug-scan-count"),
 ]
