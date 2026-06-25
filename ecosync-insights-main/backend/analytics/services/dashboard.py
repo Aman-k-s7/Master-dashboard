@@ -784,3 +784,57 @@ def get_daily_avg_by_category(filters: FilterParams) -> list[dict]:
         }
         for r in rows
     ]
+
+
+def inspect_scans(device: str, date: str) -> list[dict]:
+    """Return all scans for a device+date with raw and computed weights for debugging."""
+    json_w = (
+        "CASE WHEN JSON_VALID(request) "
+        "THEN JSON_UNQUOTE(JSON_EXTRACT(request, '$.scan_data.weight')) "
+        "ELSE NULL END"
+    )
+    computed = f"COALESCE(NULLIF(CAST({json_w} AS DECIMAL(18,3)), 0), COALESCE(weight, 0) * {WEIGHT_MULTIPLIER})"
+    sql = f"""
+        SELECT
+            id,
+            commodity_name,
+            weight                              AS raw_weight_col,
+            {json_w}                            AS json_weight,
+            ROUND({computed}, 3)                AS computed_weight_kg,
+            is_valid,
+            created_on_date,
+            created_at
+        FROM {_table()}
+        WHERE company_id = %s
+          AND device_serial_no = %s
+          AND created_on_date = %s
+        ORDER BY computed_weight_kg DESC, id ASC
+    """
+    rows = _fetch_all(sql, [COMPANY_ID, device, date])
+    return [
+        {
+            "id": row["id"],
+            "commodity_name": row["commodity_name"],
+            "raw_weight_col": float(row["raw_weight_col"] or 0),
+            "json_weight": row["json_weight"],
+            "computed_weight_kg": float(row["computed_weight_kg"] or 0),
+            "is_valid": row["is_valid"],
+            "created_on_date": row["created_on_date"].isoformat() if row["created_on_date"] else None,
+            "created_at": str(row["created_at"]) if row["created_at"] else None,
+        }
+        for row in rows
+    ]
+
+
+def mark_scan_invalid(scan_id: int) -> dict:
+    """Mark a single scan record as is_valid=0 to exclude it from all dashboard queries."""
+    # First verify the record belongs to our company
+    check_sql = f"SELECT id, device_serial_no, created_on_date FROM {_table()} WHERE id = %s AND company_id = %s"
+    rows = _fetch_all(check_sql, [scan_id, COMPANY_ID])
+    if not rows:
+        return {"success": False, "error": "Record not found or does not belong to this company."}
+
+    update_sql = f"UPDATE {_table()} SET is_valid = 0 WHERE id = %s AND company_id = %s"
+    with connection.cursor() as cursor:
+        cursor.execute(update_sql, [scan_id, COMPANY_ID])
+    return {"success": True, "id": scan_id, "message": f"Scan {scan_id} marked as invalid and excluded from dashboard."}

@@ -25,6 +25,8 @@ from analytics.services.dashboard import (
     get_weekday_comparison_grid,
     get_waste_by_category,
     get_weekly_waste,
+    inspect_scans,
+    mark_scan_invalid,
 )
 from analytics.services.filters import FilterParams, parse_filters
 
@@ -284,3 +286,41 @@ def daily_avg_by_category(request: HttpRequest) -> JsonResponse:
     except DatabaseError as exc:
         return _database_error_response(exc)
     return JsonResponse(payload, safe=False)
+
+
+@require_GET
+def scan_inspect(request: HttpRequest) -> JsonResponse:
+    """Inspect all scans for a device on a date — useful for identifying anomalous records.
+    GET /api/scan-inspect?device=CFS02&date=2025-07-05
+    """
+    device = request.GET.get("device", "").strip()
+    date = request.GET.get("date", "").strip()
+    if not device or not date:
+        return JsonResponse({"errors": ["'device' and 'date' query params are required."]}, status=400)
+    try:
+        payload = inspect_scans(device, date)
+    except DatabaseError as exc:
+        return _database_error_response(exc)
+    return JsonResponse(payload, safe=False)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def mark_invalid(request: HttpRequest) -> JsonResponse:
+    """Mark a scan record as is_valid=0 to exclude it from all dashboard queries.
+    POST /api/mark-invalid  body: {"id": 12345}
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"errors": ["Invalid JSON body."]}, status=400)
+    scan_id = payload.get("id")
+    if not scan_id or not str(scan_id).isdigit():
+        return JsonResponse({"errors": ["'id' must be a valid integer."]}, status=400)
+    try:
+        result = mark_scan_invalid(int(scan_id))
+    except DatabaseError as exc:
+        return _database_error_response(exc)
+    if not result["success"]:
+        return JsonResponse(result, status=404)
+    return JsonResponse(result)
