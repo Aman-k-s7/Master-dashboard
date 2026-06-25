@@ -44,7 +44,7 @@ def _amount_expr() -> str:
 
 
 def _where_clause(filters: FilterParams) -> tuple[str, list]:
-    clauses = ["company_id = %s", "commodity_name IS NOT NULL", "created_on_date IS NOT NULL"]
+    clauses = ["company_id = %s", "commodity_name IS NOT NULL", "created_on_date IS NOT NULL", "is_valid = 1"]
     params: list = [COMPANY_ID]
 
     if filters.date_from:
