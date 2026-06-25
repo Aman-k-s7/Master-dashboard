@@ -301,7 +301,7 @@ def scan_inspect(request: HttpRequest) -> JsonResponse:
         payload = inspect_scans(device, date)
     except DatabaseError as exc:
         return _database_error_response(exc)
-    return JsonResponse(payload, safe=False)
+    return JsonResponse(payload)
 
 
 @csrf_exempt

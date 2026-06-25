@@ -786,7 +786,7 @@ def get_daily_avg_by_category(filters: FilterParams) -> list[dict]:
     ]
 
 
-def inspect_scans(device: str, date: str) -> list[dict]:
+def inspect_scans(device: str, date: str) -> dict:
     """Return all scans for a device+date with raw and computed weights for debugging."""
     json_w = (
         "CASE WHEN JSON_VALID(request) "
@@ -810,18 +810,62 @@ def inspect_scans(device: str, date: str) -> list[dict]:
         ORDER BY computed_weight_kg DESC, id ASC
     """
     rows = _fetch_all(sql, [COMPANY_ID, device, date])
-    return [
-        {
-            "id": row["id"],
-            "commodity_name": row["commodity_name"],
-            "raw_weight_col": float(row["raw_weight_col"] or 0),
-            "json_weight": row["json_weight"],
-            "computed_weight_kg": float(row["computed_weight_kg"] or 0),
-            "is_valid": row["is_valid"],
-            "created_on_date": row["created_on_date"].isoformat() if row["created_on_date"] else None,
-        }
-        for row in rows
-    ]
+
+    # If no results, return diagnostic info: nearby dates for this device
+    # and devices that had scans on this date
+    nearby_devices_sql = f"""
+        SELECT DISTINCT device_serial_no, created_on_date, COUNT(*) AS scan_count
+        FROM {_table()}
+        WHERE company_id = %s
+          AND created_on_date BETWEEN DATE_SUB(%s, INTERVAL 3 DAY) AND DATE_ADD(%s, INTERVAL 3 DAY)
+        GROUP BY device_serial_no, created_on_date
+        ORDER BY created_on_date ASC, scan_count DESC
+        LIMIT 30
+    """
+    nearby = _fetch_all(nearby_devices_sql, [COMPANY_ID, date, date])
+
+    device_dates_sql = f"""
+        SELECT DISTINCT created_on_date, COUNT(*) AS scan_count
+        FROM {_table()}
+        WHERE company_id = %s
+          AND device_serial_no = %s
+        ORDER BY created_on_date DESC
+        LIMIT 10
+    """
+    device_dates = _fetch_all(device_dates_sql, [COMPANY_ID, device])
+
+    return {
+        "query": {"company_id": COMPANY_ID, "table": SCAN_TABLE, "device": device, "date": date},
+        "records": [
+            {
+                "id": row["id"],
+                "commodity_name": row["commodity_name"],
+                "raw_weight_col": float(row["raw_weight_col"] or 0),
+                "json_weight": row["json_weight"],
+                "computed_weight_kg": float(row["computed_weight_kg"] or 0),
+                "is_valid": row["is_valid"],
+                "created_on_date": row["created_on_date"].isoformat() if row["created_on_date"] else None,
+            }
+            for row in rows
+        ],
+        "debug": {
+            "devices_near_date": [
+                {
+                    "device_serial_no": r["device_serial_no"],
+                    "created_on_date": r["created_on_date"].isoformat() if r["created_on_date"] else None,
+                    "scan_count": int(r["scan_count"]),
+                }
+                for r in nearby
+            ],
+            "recent_dates_for_device": [
+                {
+                    "created_on_date": r["created_on_date"].isoformat() if r["created_on_date"] else None,
+                    "scan_count": int(r["scan_count"]),
+                }
+                for r in device_dates
+            ],
+        },
+    }
 
 
 def mark_scan_invalid(scan_id: int) -> dict:
