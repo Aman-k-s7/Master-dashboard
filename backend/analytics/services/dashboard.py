@@ -806,8 +806,7 @@ def inspect_scans(device: str, date: str) -> list[dict]:
             {json_w}                            AS json_weight,
             ROUND({computed}, 3)                AS computed_weight_kg,
             is_valid,
-            created_on_date,
-            created_at
+            created_on_date
         FROM {_table()}
         WHERE company_id = %s
           AND device_serial_no = %s
@@ -824,7 +823,6 @@ def inspect_scans(device: str, date: str) -> list[dict]:
             "computed_weight_kg": float(row["computed_weight_kg"] or 0),
             "is_valid": row["is_valid"],
             "created_on_date": row["created_on_date"].isoformat() if row["created_on_date"] else None,
-            "created_at": str(row["created_at"]) if row["created_at"] else None,
         }
         for row in rows
     ]
