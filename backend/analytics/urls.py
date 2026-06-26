@@ -25,5 +25,4 @@ urlpatterns = [
     path("scan-inspect", views.scan_inspect, name="scan-inspect"),
     path("mark-invalid", views.mark_invalid, name="mark-invalid"),
     path("mark-invalid-by-local-date", views.mark_invalid_by_local_date, name="mark-invalid-by-local-date"),
-    path("debug-scan-count", views.debug_scan_count, name="debug-scan-count"),
 ]

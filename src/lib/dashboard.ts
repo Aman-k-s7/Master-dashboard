@@ -109,6 +109,7 @@ export const DEVICE_DISPLAY_NAMES: Record<string, string> = {
   "CFSO5": "SAP11BLR (Bengaluru)",
   "AGFW26005": "BNY (Trial) (Pune)",
   "AGFW26014": "Boeing India WH1 (Kempapura)",
+  "AGFW26015": "Boeing India WH2 (Kempapura)",
 };
 
 export function getDeviceDisplayName(serial: string): string {
