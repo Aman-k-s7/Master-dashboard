@@ -27,6 +27,7 @@ from analytics.services.dashboard import (
     get_weekly_waste,
     inspect_scans,
     mark_scan_invalid,
+    mark_scans_invalid_by_local_date_weight,
 )
 from analytics.services.filters import FilterParams, parse_filters
 
@@ -316,6 +317,46 @@ def mark_invalid(request: HttpRequest) -> JsonResponse:
     except DatabaseError as exc:
         return _database_error_response(exc)
     if not result["success"]:
+        return JsonResponse(result, status=404)
+    return JsonResponse(result)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def mark_invalid_by_local_date(request: HttpRequest) -> JsonResponse:
+    """Mark all scans on a local date whose computed weight equals `weight` as invalid.
+
+    POST body (JSON):
+        {
+          "local_date": "2026-05-05",
+          "weight": 80.08,
+          "tz": "Asia/Kolkata"   // optional, defaults to Asia/Kolkata
+        }
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"errors": ["Invalid JSON body."]}, status=400)
+
+    local_date = (payload.get("local_date") or "").strip()
+    weight = payload.get("weight")
+    tz = (payload.get("tz") or "Asia/Kolkata").strip()
+
+    if not local_date:
+        return JsonResponse({"errors": ["'local_date' is required (YYYY-MM-DD)."]}, status=400)
+    if weight is None:
+        return JsonResponse({"errors": ["'weight' is required."]}, status=400)
+    try:
+        weight = float(weight)
+    except (TypeError, ValueError):
+        return JsonResponse({"errors": ["'weight' must be a number."]}, status=400)
+
+    try:
+        result = mark_scans_invalid_by_local_date_weight(local_date, weight, tz_name=tz)
+    except Exception as exc:
+        return JsonResponse({"errors": [str(exc)]}, status=500)
+
+    if not result.get("success"):
         return JsonResponse(result, status=404)
     return JsonResponse(result)
 

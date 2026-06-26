@@ -1,5 +1,6 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from analytics.services.filters import FilterParams
 from django.db import connection
@@ -880,3 +881,84 @@ def mark_scan_invalid(scan_id: int) -> dict:
     with connection.cursor() as cursor:
         cursor.execute(update_sql, [scan_id, COMPANY_ID])
     return {"success": True, "id": scan_id, "message": f"Scan {scan_id} marked as invalid and excluded from dashboard."}
+
+
+def mark_scans_invalid_by_date_weight(date: str, weight: float) -> dict:
+    """Mark all scans on a given `date` whose computed weight (rounded to 3dp)
+    equals `weight` as invalid (is_valid = 0). Returns the list of affected ids
+    and a success flag. This is intended to remove anomalous scans such as the
+    reported 80.08 kg entry on 5th May.
+
+    Use with caution: this will permanently mark records as invalid for the
+    configured `COMPANY_ID`.
+    """
+    rounded_weight = round(float(weight), 3)
+    # Find matching records first
+    sel_sql = f"""
+        SELECT id, ROUND({_weight_expr()}, 3) AS computed_weight
+        FROM {_table()}
+        WHERE company_id = %s
+          AND created_on_date = %s
+          AND ROUND({_weight_expr()}, 3) = %s
+    """
+    rows = _fetch_all(sel_sql, [COMPANY_ID, date, rounded_weight])
+    if not rows:
+        return {"success": False, "error": "No matching scans found for the given date and weight."}
+
+    ids = [r["id"] for r in rows]
+    placeholders = ", ".join(["%s"] * len(ids))
+    update_sql = f"UPDATE {_table()} SET is_valid = 0 WHERE id IN ({placeholders}) AND company_id = %s"
+    with connection.cursor() as cursor:
+        cursor.execute(update_sql, [*ids, COMPANY_ID])
+
+    return {"success": True, "updated_count": len(ids), "ids": ids, "message": f"Marked {len(ids)} scan(s) invalid."}
+
+
+def mark_scans_invalid_by_local_date_weight(local_date: str, weight: float, tz_name: str = "Asia/Kolkata") -> dict:
+    """Mark scans within the local date (in timezone `tz_name`) whose computed
+    weight (rounded to 3 dp) equals `weight` as invalid.
+
+    This finds rows by `created_at` between the UTC range corresponding to the
+    local date and updates `is_valid = 0` for matching records for `COMPANY_ID`.
+    """
+    try:
+        tz = ZoneInfo(tz_name)
+    except Exception:
+        return {"success": False, "error": f"Unknown timezone: {tz_name}"}
+
+    try:
+        local_start = datetime.strptime(local_date, "%Y-%m-%d").replace(tzinfo=tz)
+    except Exception:
+        return {"success": False, "error": "local_date must be in YYYY-MM-DD format"}
+
+    local_end = local_start + timedelta(days=1)
+    utc_start = local_start.astimezone(ZoneInfo("UTC"))
+    utc_end = local_end.astimezone(ZoneInfo("UTC"))
+
+    rounded_weight = round(float(weight), 3)
+
+    sel_sql = f"""
+        SELECT id, ROUND({_weight_expr()}, 3) AS computed_weight
+        FROM {_table()}
+        WHERE company_id = %s
+          AND created_at >= %s
+          AND created_at < %s
+          AND ROUND({_weight_expr()}, 3) = %s
+    """
+    rows = _fetch_all(sel_sql, [COMPANY_ID, utc_start, utc_end, rounded_weight])
+    if not rows:
+        return {"success": False, "error": "No matching scans found for the given local date, timezone and weight."}
+
+    ids = [r["id"] for r in rows]
+    placeholders = ", ".join(["%s"] * len(ids))
+    update_sql = f"UPDATE {_table()} SET is_valid = 0 WHERE id IN ({placeholders}) AND company_id = %s"
+    with connection.cursor() as cursor:
+        cursor.execute(update_sql, [*ids, COMPANY_ID])
+
+    return {
+        "success": True,
+        "updated_count": len(ids),
+        "ids": ids,
+        "message": f"Marked {len(ids)} scan(s) invalid for local date {local_date} ({tz_name}).",
+        "utc_range": {"start": utc_start.isoformat(), "end": utc_end.isoformat()},
+    }
